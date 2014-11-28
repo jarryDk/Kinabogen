@@ -24,7 +24,7 @@ public class PageService {
 
     @Inject
     MongoClientProvider mongoClientProvider;
-
+    
     public DBObject create(DBObject dbObject) {
 
         MongoClient mongoClient = mongoClientProvider.getMongoClient();
