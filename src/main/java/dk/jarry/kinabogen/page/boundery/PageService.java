@@ -10,6 +10,7 @@ import dk.jarry.kinabogen.MongoClientProvider;
 import java.util.Calendar;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
+import org.bson.BSONObject;
 import org.bson.types.ObjectId;
 
 /**
@@ -22,86 +23,80 @@ public class PageService {
     private final String MONGODB_DATABASE = "kinabogen";
     private final String MONGODB_COLLECTION = "page";
 
+    /**
+     * if the database should create the element if it does not exist
+     */
+    private final boolean UPDATE_IF_NOT_EXIST = false;
+
+    /**
+     * if the update should be applied to all objects matching (db version 1.1.3
+     * and above). An object will not be inserted if it does not exist in the
+     * collection and upsert=true and multi=true
+     */
+    private final boolean UPDATE_ALL_MATCHING_OBJECTS = false;
+
+    private final MongoClient mongoClient;
+    private final DB db;
+    private final DBCollection collection;
+
     @Inject
     MongoClientProvider mongoClientProvider;
-    
-    public DBObject create(DBObject dbObject) {
 
-        MongoClient mongoClient = mongoClientProvider.getMongoClient();
-        DB db = mongoClient.getDB(MONGODB_DATABASE);
-        DBCollection collection = db.getCollection(MONGODB_COLLECTION);
-
-        dbObject.put("created", Calendar.getInstance().getTime());
-
-        /**
-         * persister dbObject in MongoDB
-         */
-        collection.insert(dbObject, WriteConcern.SAFE);
-
-        return dbObject;
+    public PageService() {
+        mongoClient = mongoClientProvider.getMongoClient();
+        db = mongoClient.getDB(MONGODB_DATABASE);
+        collection = db.getCollection(MONGODB_COLLECTION);
     }
 
-    public DBObject read(String id) {
+    public BasicDBObject create(BasicDBObject obj) {
+        BasicDBObject insertObj = new BasicDBObject();
+        insertObj.put("_id", new ObjectId());
+        insertObj.put("created", Calendar.getInstance().getTime());
+        insertObj.putAll((BSONObject) obj);
+        collection.insert(insertObj, WriteConcern.SAFE);
+        return insertObj;
+    }
 
-        MongoClient mongoClient = mongoClientProvider.getMongoClient();
-        DB db = mongoClient.getDB(MONGODB_DATABASE);
-        DBCollection collection = db.getCollection(MONGODB_COLLECTION);
-        
+    public BasicDBObject read(String id) {
         BasicDBObject query = new BasicDBObject();
         query.put("_id", new ObjectId(id));
-
-        DBObject findOne = collection.findOne(query);
-
+        BasicDBObject findOne = (BasicDBObject) collection.findOne(query);
         return findOne;
     }
 
-    public DBObject update(DBObject dbObject) {
-
-        MongoClient mongoClient = mongoClientProvider.getMongoClient();
-        DB db = mongoClient.getDB(MONGODB_DATABASE);
-        DBCollection collection = db.getCollection(MONGODB_COLLECTION);
-
+    public BasicDBObject update(BasicDBObject dbObject) {
         String id = (String) dbObject.get("id");
-
         BasicDBObject query = new BasicDBObject();
         query.put("_id", new ObjectId(id));
-
         DBObject findOne = collection.findOne(query);
 
-        /**
-         * if the database should create the element if it does not exist
-         */
-        boolean upsert = false;
-
-        /**
-         * if the update should be applied to all objects matching (db version
-         * 1.1.3 and above). An object will not be inserted if it does not exist
-         * in the collection and upsert=true and multi=true
-         */
-        boolean multi = false;
-
         if (findOne != null) {
-            collection.update(query, dbObject, upsert, multi,
+            collection.update(query, dbObject, UPDATE_IF_NOT_EXIST, UPDATE_ALL_MATCHING_OBJECTS,
                     WriteConcern.SAFE);
         } else {
             // TODO org not found!
             return null;
         }
-
         return dbObject;
     }
 
     public void delete(String id) {
-
-        MongoClient mongoClient = mongoClientProvider.getMongoClient();
-        DB db = mongoClient.getDB(MONGODB_DATABASE);
-        DBCollection collection = db.getCollection(MONGODB_COLLECTION);
-
         BasicDBObject query = new BasicDBObject();
         query.put("_id", new ObjectId(id));
-
         DBObject findOne = collection.findOne(query);
-
         collection.remove(findOne, WriteConcern.SAFE);
+    }
+    
+    @SuppressWarnings("ResultOfObjectAllocationIgnored")
+    public boolean isIdValid(String id, String name){
+        if(id==null){
+            return false;
+        }
+        try{
+            new ObjectId(id);
+            return true;
+        }catch(IllegalArgumentException e){
+            return false;
+        }
     }
 }
