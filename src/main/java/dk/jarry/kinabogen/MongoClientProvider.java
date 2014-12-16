@@ -21,6 +21,9 @@ public class MongoClientProvider {
 
     private MongoClient mongoClient = null;
 
+    public MongoClientProvider() {
+    }
+    
     @Lock(LockType.READ)
     public MongoClient getMongoClient() {
         return mongoClient;
