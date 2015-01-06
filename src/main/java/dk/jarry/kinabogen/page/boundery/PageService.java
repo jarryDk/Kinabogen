@@ -8,6 +8,7 @@ import com.mongodb.MongoClient;
 import com.mongodb.WriteConcern;
 import dk.jarry.kinabogen.MongoClientProvider;
 import java.util.Calendar;
+import javax.annotation.PostConstruct;
 import javax.ejb.Stateless;
 import javax.inject.Inject;
 import org.bson.BSONObject;
@@ -35,16 +36,18 @@ public class PageService {
      */
     private final boolean UPDATE_ALL_MATCHING_OBJECTS = false;
 
-    private final MongoClient mongoClient;
-    private final DB db;
-    private final DBCollection collection;
+    private DBCollection collection;
 
     @Inject
     MongoClientProvider mongoClientProvider;
 
     public PageService() {
-        mongoClient = mongoClientProvider.getMongoClient();
-        db = mongoClient.getDB(MONGODB_DATABASE);
+    }
+
+    @PostConstruct
+    public void init() {
+        MongoClient mongoClient = mongoClientProvider.getMongoClient();
+        DB db = mongoClient.getDB(MONGODB_DATABASE);
         collection = db.getCollection(MONGODB_COLLECTION);
     }
 
@@ -86,16 +89,16 @@ public class PageService {
         DBObject findOne = collection.findOne(query);
         collection.remove(findOne, WriteConcern.SAFE);
     }
-    
+
     @SuppressWarnings("ResultOfObjectAllocationIgnored")
-    public boolean isIdValid(String id, String name){
-        if(id==null){
+    public boolean isIdValid(String id, String name) {
+        if (id == null) {
             return false;
         }
-        try{
+        try {
             new ObjectId(id);
             return true;
-        }catch(IllegalArgumentException e){
+        } catch (IllegalArgumentException e) {
             return false;
         }
     }
